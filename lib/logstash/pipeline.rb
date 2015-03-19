@@ -12,6 +12,7 @@ require "logstash/outputs/base"
 class LogStash::Pipeline
 
   FLUSH_EVENT = LogStash::FlushEvent.new
+  SHUTDOWN_EVENT = LogStash::ShutdownEvent.new
 
   def initialize(configstr)
     @logger = Cabin::Channel.get(LogStash)
@@ -113,7 +114,7 @@ class LogStash::Pipeline
 
   def shutdown_filters
     @flusher_lock.synchronize { @flusher_thread.kill }
-    @input_to_filter.push(LogStash::ShutdownEvent.new)
+    @input_to_filter.push(LogStash::Pipeline::SHUTDOWN_EVENT)
   end
 
   def wait_filters
@@ -122,7 +123,7 @@ class LogStash::Pipeline
 
   def shutdown_outputs
     # nothing, filters will do this
-    @filter_to_output.push(LogStash::ShutdownEvent.new)
+    @filter_to_output.push(LogStash::Pipeline::SHUTDOWN_EVENT)
   end
 
   def wait_outputs
@@ -231,7 +232,7 @@ class LogStash::Pipeline
 
     while true
       event = @filter_to_output.pop
-      break if event.is_a?(LogStash::ShutdownEvent)
+      break if event == LogStash::Pipeline::SHUTDOWN_EVENT
       output(event)
     end # while true
 
